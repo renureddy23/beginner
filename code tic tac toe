@@ -1,0 +1,212 @@
+import pygame
+import sys
+import random
+
+# Initialize Pygame
+pygame.init()
+
+# Set up the screen
+SCREEN_SIZE = (1000, 1000)  # Increased screen size to 1000x1000
+SCREEN = pygame.display.set_mode(SCREEN_SIZE)
+pygame.display.set_caption("Tic Tac Toe - Player vs Computer")
+
+# Colors
+WHITE = (255, 255, 255)
+LINE_COLOR = (28, 170, 156)
+BACKGROUND_COLOR = (28, 170, 156)  # Teal background color
+GRID_COLOR = (0, 0, 0)
+X_COLOR = (242, 85, 96)  # Red for Player "X"
+O_COLOR = (40, 40, 40)  # Dark color for Computer "O"
+BUTTON_COLOR = (255, 165, 0)  # Orange for buttons
+BUTTON_HOVER_COLOR = (255, 140, 0)  # Darker orange for hover effect
+OVERLAY_COLOR = (0, 0, 0, 180)  # Semi-transparent black overlay
+
+# Grid Dimensions
+GRID_SIZE = 3  # 3x3 grid
+SQUARE_SIZE = SCREEN_SIZE[0] // GRID_SIZE  # Size of each square
+LINE_WIDTH = 15
+CIRCLE_RADIUS = SQUARE_SIZE // 4
+CIRCLE_WIDTH = 15
+X_WIDTH = 25
+
+# Fonts
+FONT = pygame.font.SysFont("Arial", 70)  # Increased font size for bigger screen
+BUTTON_FONT = pygame.font.SysFont("Arial", 50)  # Larger button font
+
+# Game State Variables
+board = [["" for _ in range(GRID_SIZE)] for _ in range(GRID_SIZE)]  # Empty board
+current_player = "X"  # X starts first (Player)
+game_over = False
+winner = None
+
+# Function to draw the grid
+def draw_grid():
+    for row in range(1, GRID_SIZE):
+        pygame.draw.line(SCREEN, GRID_COLOR, (0, row * SQUARE_SIZE), (SCREEN_SIZE[0], row * SQUARE_SIZE), LINE_WIDTH)
+        pygame.draw.line(SCREEN, GRID_COLOR, (row * SQUARE_SIZE, 0), (row * SQUARE_SIZE, SCREEN_SIZE[1]), LINE_WIDTH)
+
+# Function to draw the X and O marks
+def draw_marks():
+    for row in range(GRID_SIZE):
+        for col in range(GRID_SIZE):
+            if board[row][col] == "X":
+                draw_X(col, row)
+            elif board[row][col] == "O":
+                draw_O(col, row)
+
+# Function to draw X mark
+def draw_X(col, row):
+    pygame.draw.line(SCREEN, X_COLOR, (col * SQUARE_SIZE + 15, row * SQUARE_SIZE + 15), 
+                     ((col + 1) * SQUARE_SIZE - 15, (row + 1) * SQUARE_SIZE - 15), X_WIDTH)
+    pygame.draw.line(SCREEN, X_COLOR, ((col + 1) * SQUARE_SIZE - 15, row * SQUARE_SIZE + 15), 
+                     (col * SQUARE_SIZE + 15, (row + 1) * SQUARE_SIZE - 15), X_WIDTH)
+
+# Function to draw O mark
+def draw_O(col, row):
+    pygame.draw.circle(SCREEN, O_COLOR, (col * SQUARE_SIZE + SQUARE_SIZE // 2, row * SQUARE_SIZE + SQUARE_SIZE // 2), CIRCLE_RADIUS, CIRCLE_WIDTH)
+
+# Function to check for a win
+def check_winner():
+    global winner
+    for row in range(GRID_SIZE):
+        if board[row][0] == board[row][1] == board[row][2] != "":
+            winner = board[row][0]
+            pygame.draw.line(SCREEN, LINE_COLOR, (0, row * SQUARE_SIZE + SQUARE_SIZE // 2),
+                             (SCREEN_SIZE[0], row * SQUARE_SIZE + SQUARE_SIZE // 2), LINE_WIDTH)
+            return True
+
+    for col in range(GRID_SIZE):
+        if board[0][col] == board[1][col] == board[2][col] != "":
+            winner = board[0][col]
+            pygame.draw.line(SCREEN, LINE_COLOR, (col * SQUARE_SIZE + SQUARE_SIZE // 2, 0),
+                             (col * SQUARE_SIZE + SQUARE_SIZE // 2, SCREEN_SIZE[1]), LINE_WIDTH)
+            return True
+
+    if board[0][0] == board[1][1] == board[2][2] != "":
+        winner = board[0][0]
+        pygame.draw.line(SCREEN, LINE_COLOR, (0, 0), (SCREEN_SIZE[0], SCREEN_SIZE[1]), LINE_WIDTH)
+        return True
+
+    if board[0][2] == board[1][1] == board[2][0] != "":
+        winner = board[0][2]
+        pygame.draw.line(SCREEN, LINE_COLOR, (SCREEN_SIZE[0], 0), (0, SCREEN_SIZE[1]), LINE_WIDTH)
+        return True
+
+    return False
+
+# Function to check for a draw
+def check_draw():
+    for row in range(GRID_SIZE):
+        for col in range(GRID_SIZE):
+            if board[row][col] == "":
+                return False
+    return True
+
+# Function to display text on the screen
+def display_text(text, font, color, position):
+    text_surface = font.render(text, True, color)
+    SCREEN.blit(text_surface, position)
+
+# Function to reset the game
+def reset_game():
+    global board, current_player, game_over, winner
+    board = [["" for _ in range(GRID_SIZE)] for _ in range(GRID_SIZE)]
+    current_player = "X"
+    game_over = False
+    winner = None
+
+# Function to draw the Game Over screen
+def draw_game_over():
+    # Draw overlay
+    overlay = pygame.Surface((SCREEN_SIZE[0], SCREEN_SIZE[1]))
+    overlay.set_alpha(180)  # Semi-transparent
+    overlay.fill(OVERLAY_COLOR)
+    SCREEN.blit(overlay, (0, 0))
+    
+    if winner:
+        display_text(f"Player {winner} Wins!", FONT, WHITE, (SCREEN_SIZE[0] // 4, SCREEN_SIZE[1] // 4))
+    else:
+        display_text("It's a Draw!", FONT, WHITE, (SCREEN_SIZE[0] // 4, SCREEN_SIZE[1] // 4))
+
+    # Draw buttons for Replay and Quit with hover effect
+    replay_rect = pygame.Rect(SCREEN_SIZE[0] // 4, SCREEN_SIZE[1] // 2, 250, 60)
+    quit_rect = pygame.Rect(SCREEN_SIZE[0] // 4, SCREEN_SIZE[1] // 1.5, 250, 60)
+    
+    pygame.draw.rect(SCREEN, BUTTON_COLOR, replay_rect)
+    display_text("Replay", BUTTON_FONT, WHITE, (SCREEN_SIZE[0] // 3.5, SCREEN_SIZE[1] // 2 + 15))
+
+    pygame.draw.rect(SCREEN, BUTTON_COLOR, quit_rect)
+    display_text("Quit", BUTTON_FONT, WHITE, (SCREEN_SIZE[0] // 3.5, SCREEN_SIZE[1] // 1.5 + 15))
+
+    return replay_rect, quit_rect
+
+# Function for the computer to make a random move
+def computer_move():
+    empty_cells = [(row, col) for row in range(GRID_SIZE) for col in range(GRID_SIZE) if board[row][col] == ""]
+    if empty_cells:
+        return random.choice(empty_cells)
+    return None
+
+# Main game loop
+clock = pygame.time.Clock()
+while True:
+    SCREEN.fill(BACKGROUND_COLOR)
+    
+    # Draw the grid
+    draw_grid()
+
+    # Draw the marks (X and O)
+    draw_marks()
+
+    # Check for a win or draw
+    if not game_over:
+        if check_winner():
+            game_over = True
+        elif check_draw():
+            game_over = True
+            winner = "Draw"
+
+    # If the game is over, show the game over screen
+    if game_over:
+        replay_rect, quit_rect = draw_game_over()
+
+    # Handle events
+    for event in pygame.event.get():
+        if event.type == pygame.QUIT:
+            pygame.quit()
+            sys.exit()
+
+        if event.type == pygame.MOUSEBUTTONDOWN and not game_over:
+            mouseX, mouseY = event.pos
+            clicked_row = mouseY // SQUARE_SIZE
+            clicked_col = mouseX // SQUARE_SIZE
+
+            if board[clicked_row][clicked_col] == "":
+                board[clicked_row][clicked_col] = current_player
+                if current_player == "X":
+                    current_player = "O"
+                else:
+                    current_player = "X"
+
+        if event.type == pygame.MOUSEBUTTONDOWN and game_over:
+            mouseX, mouseY = event.pos
+
+            # Replay Button
+            if replay_rect.collidepoint(mouseX, mouseY):
+                reset_game()
+
+            # Quit Button
+            if quit_rect.collidepoint(mouseX, mouseY):
+                pygame.quit()
+                sys.exit()
+
+    # If it is the computer's turn (O), make a move
+    if current_player == "O" and not game_over:
+        row, col = computer_move()
+        if row is not None:
+            board[row][col] = "O"
+            current_player = "X"  # Switch back to player
+
+    pygame.display.update()
+    clock.tick(30)  # 30 FPS for smooth gameplay
+
