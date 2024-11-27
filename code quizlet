@@ -1,0 +1,149 @@
+import pygame
+import sys
+
+# Initialize pygame
+pygame.init()
+
+# Set up the screen
+SCREEN = pygame.display.set_mode((1000, 800))  # Increase the screen size to 1000x800
+pygame.display.set_caption("Quizlet Game")
+
+# Colors
+BG_COLOUR = (24, 29, 39)  # Dark background
+FLASHCARD_COLOUR = (47, 55, 69)  # Light grey flashcard
+FLIPPED_COLOUR = (102, 115, 133)  # Slightly darker flashcard (flipped)
+ANSWER_FONT = pygame.font.SysFont("Arial", 28)
+QUESTION_FONT = pygame.font.SysFont("Arial", 36)
+WHITE = (255, 255, 255)
+GREEN = (34, 177, 76)
+RED = (255, 0, 0)
+
+# Game variables
+score = 0
+index = 0
+answer_input = ""
+card_turned = False
+waiting_for_next_question = False
+is_answered = False
+
+# Quiz data (questions and answers)
+quiz_data = {
+    "Who won the cricket T20 world cup 2024?": "India",
+    "Which country hosted the 2008 Summer Olympics?": "China",
+    "Who is known as the 'King of Basketball'?": "Jordan",
+    "Which team won the NBA Championship in 2022?": "GSW",
+    "Who holds the record for the most goals in a single World Cup?": "Brazil",
+    "What is the national sport of India?": "Hockey",
+    "Which country has won the most cricket World Cups?": "Australia",
+    "Who's the goat in cricket?": "MSD",
+    "Which young tennis player has won the most Grand Slam titles this year?": "Sinner",
+    "Who won 2024 Las Vegas Grand Prix?": "Max Verstappen"
+}
+
+# Timer variables
+timer_font = pygame.font.SysFont("Arial", 24)
+time_left = 30  # 30 seconds per question
+
+# Function to render text
+def render_text(text, font, color, position):
+    text_object = font.render(text, True, color)
+    text_rect = text_object.get_rect(center=position)
+    SCREEN.blit(text_object, text_rect)
+
+# Function to handle score and timer display
+def render_score_and_timer(score, time_left):
+    render_text(f"Score: {score}", ANSWER_FONT, WHITE, (100, 40))
+    render_text(f"Time Left: {time_left}s", ANSWER_FONT, WHITE, (900, 40))
+
+# Function to render flashcard with question or answer
+def render_flashcard(text, card_color, flipped=False):
+    pygame.draw.rect(SCREEN, card_color, (200, 250, 600, 300), border_radius=15)
+    render_text(text, QUESTION_FONT if not flipped else ANSWER_FONT, WHITE, (500, 400))
+
+# Main game loop
+clock = pygame.time.Clock()
+
+while True:
+    SCREEN.fill(BG_COLOUR)
+    
+    # Handle timer countdown only if the player has not answered yet
+    if not is_answered:
+        if time_left > 0:
+            time_left -= 1
+        else:
+            feedback = "Time's up!"
+            render_text(feedback, ANSWER_FONT, RED, (500, 550))
+            is_answered = True
+            waiting_for_next_question = True
+
+    # Get current question and answer from quiz data
+    current_question = list(quiz_data.keys())[index]
+    current_answer = list(quiz_data.values())[index]
+
+    # Handle events
+    for event in pygame.event.get():
+        if event.type == pygame.QUIT:
+            pygame.quit()
+            sys.exit()
+
+        if event.type == pygame.KEYDOWN:
+            if event.key == pygame.K_SPACE and not is_answered:
+                card_turned = not card_turned  # Flip the card when space is pressed
+
+            # Input for typing the answer
+            if event.key == pygame.K_BACKSPACE:
+                answer_input = answer_input[:-1]  # Remove last character
+            elif event.key == pygame.K_RETURN and not is_answered:
+                # Check the player's answer
+                if answer_input.strip().lower() == current_answer.lower():
+                    feedback = "Correct!"
+                    score += 1
+                else:
+                    feedback = "Wrong!"
+                is_answered = True
+                waiting_for_next_question = True  # Wait for player to move to next question
+
+            # Handle text input (letters and spaces)
+            elif event.key != pygame.K_SPACE and event.key != pygame.K_RETURN:
+                answer_input += event.unicode
+
+            # Move to next question after feedback (Right Arrow)
+            if event.key == pygame.K_RIGHT and is_answered and waiting_for_next_question:
+                index = (index + 1) % len(quiz_data)  # Wrap around to the first question
+                answer_input = ""  # Reset the answer input
+                feedback = ""  # Clear the feedback
+                is_answered = False  # Allow new answer
+                waiting_for_next_question = False  # Reset question navigation
+                time_left = 30  # Reset the timer for the next question
+
+            # Move to previous question (Left Arrow)
+            if event.key == pygame.K_LEFT and index > 0:
+                index -= 1
+                answer_input = ""
+                feedback = ""
+                is_answered = False
+                waiting_for_next_question = False
+                time_left = 30  # Reset the timer for the previous question
+
+    # Render score and timer at the top of the screen
+    render_score_and_timer(score, time_left)
+
+    # Render the question or answer card
+    if not card_turned:
+        render_flashcard(current_question, FLASHCARD_COLOUR)
+    else:
+        render_flashcard(current_answer, FLIPPED_COLOUR, flipped=True)
+
+    # Show feedback after answering
+    if is_answered:
+        render_text(feedback, ANSWER_FONT, GREEN if feedback == "Correct!" else RED, (500, 500))
+    
+    # Show the player's answer input field
+    render_text(f"Your Answer: {answer_input}", ANSWER_FONT, WHITE, (500, 650))
+
+    # Update the screen
+    pygame.display.update()
+
+    # Limit the frame rate to 1 FPS for the timer update
+    clock.tick(1)  # 1 FPS to update the timer per second
+
